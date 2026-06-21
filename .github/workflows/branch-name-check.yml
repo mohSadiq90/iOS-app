@@ -1,0 +1,22 @@
+name: Branch Name Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-branch-name:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch name format
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+        run: |
+          echo "Checking branch name: $BRANCH_NAME"
+          # Regular expression to match username/PROJ-1234 format
+          if [[ ! "$BRANCH_NAME" =~ ^[^/]+/[A-Za-z]+-[0-9]+$ ]]; then
+            echo "Error: Branch name '$BRANCH_NAME' does not match the required format 'username/PROJ-1234'."
+            echo "Please rename your branch using the format 'username/PROJECT-TICKET' and try again."
+            exit 1
+          fi
+          echo "Branch name is valid."
