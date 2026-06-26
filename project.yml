@@ -20,3 +20,14 @@ targets:
       - target: iOSApp
     settings:
       GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  iOSApp:
+    build:
+      targets:
+        iOSApp: all
+        iOSAppTests: [test]
+    test:
+      targets:
+        - iOSAppTests
+      gatherCoverageData: true
