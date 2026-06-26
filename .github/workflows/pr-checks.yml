@@ -39,20 +39,18 @@ jobs:
 
             const postOrUpdate = async (body) => {
               if (existing) {
-                await github.rest.issues.updateComment({
+                await github.rest.issues.deleteComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  comment_id: existing.id,
-                  body
-                });
-              } else {
-                await github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: context.issue.number,
-                  body
+                  comment_id: existing.id
                 });
               }
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body
+              });
             };
 
             if (results.length === 0) {
@@ -158,19 +156,17 @@ jobs:
               issue_number: context.issue.number
             });
 
-            const existing = comments.find(c => c.body.includes('Code Coverage Report'));
+            const existing = comments.find(c => c.body.includes('Code Coverage Report') && c.user.type === 'Bot');
             if (existing) {
-              await github.rest.issues.updateComment({
+              await github.rest.issues.deleteComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                comment_id: existing.id,
-                body
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body
+                comment_id: existing.id
               });
             }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
