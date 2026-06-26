@@ -1,0 +1,32 @@
+name: NetworkUtility
+options:
+  bundleIdPrefix: com.demo
+
+targets:
+  NetworkUtility:
+    type: framework
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources: [Sources]
+    settings:
+      GENERATE_INFOPLIST_FILE: YES
+
+  NetworkUtilityTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources: [Tests]
+    dependencies:
+      - target: NetworkUtility
+    settings:
+      GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  NetworkUtility:
+    build:
+      targets:
+        NetworkUtility: all
+        NetworkUtilityTests: [test]
+    test:
+      targets:
+        - NetworkUtilityTests

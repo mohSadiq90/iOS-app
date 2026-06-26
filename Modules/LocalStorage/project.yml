@@ -1,0 +1,32 @@
+name: LocalStorage
+options:
+  bundleIdPrefix: com.demo
+
+targets:
+  LocalStorage:
+    type: framework
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources: [Sources]
+    settings:
+      GENERATE_INFOPLIST_FILE: YES
+
+  LocalStorageTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources: [Tests]
+    dependencies:
+      - target: LocalStorage
+    settings:
+      GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  LocalStorage:
+    build:
+      targets:
+        LocalStorage: all
+        LocalStorageTests: [test]
+    test:
+      targets:
+        - LocalStorageTests
