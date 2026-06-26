@@ -1,0 +1,27 @@
+name: Main Branch Coverage Base
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  extract-coverage:
+    name: Generate Base Coverage
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build & Generate Coverage
+        uses: ./.github/actions/build-and-test
+
+      - name: Extract Coverage JSON
+        run: |
+          xcrun xccov view --report --json TestResults.xcresult > base_coverage.json
+
+      - name: Upload Base Coverage Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: base-coverage
+          path: base_coverage.json
+          retention-days: 30
