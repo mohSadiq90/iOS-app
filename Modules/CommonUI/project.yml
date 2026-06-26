@@ -1,0 +1,32 @@
+name: CommonUI
+options:
+  bundleIdPrefix: com.demo
+
+targets:
+  CommonUI:
+    type: framework
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources: [Sources]
+    settings:
+      GENERATE_INFOPLIST_FILE: YES
+
+  CommonUITests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources: [Tests]
+    dependencies:
+      - target: CommonUI
+    settings:
+      GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  CommonUI:
+    build:
+      targets:
+        CommonUI: all
+        CommonUITests: [test]
+    test:
+      targets:
+        - CommonUITests

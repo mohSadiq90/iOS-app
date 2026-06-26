@@ -2,9 +2,10 @@
  * Formats Code Coverage report comparing it to the base coverage report if available.
  * @param {object} report - Current coverage JSON report from xccov
  * @param {object|null} baseReport - Base coverage JSON report from main branch (or null)
+ * @param {string[]} gateFailures - List of gate failure messages to display at the top
  * @returns {string} The formatted Markdown comment body
  */
-function formatCoverageReport(report, baseReport) {
+function formatCoverageReport(report, baseReport, gateFailures = []) {
   if (!report) {
     return '## 🤖 FancyBot: Code Coverage Report\n\n⚠️ Error: No coverage report was parsed.';
   }
@@ -13,16 +14,34 @@ function formatCoverageReport(report, baseReport) {
   const baseTotal = baseReport ? (baseReport.lineCoverage * 100) : null;
   
   const getDeltaStr = (current, base) => {
-    if (base === null || base === undefined) return '';
+    if (base === null || base === undefined) return '—';
     const diff = current - base;
-    if (diff === 0) return ' (0.0%)';
-    return diff > 0 ? ` (+${diff.toFixed(1)}%) 📈` : ` (${diff.toFixed(1)}%) 📉`;
+    if (Math.abs(diff) < 0.05) return '`0.0%`';
+    return diff > 0 ? `\`+${diff.toFixed(1)}%\` 📈` : `\`${diff.toFixed(1)}%\` 📉`;
   };
 
   const overallDelta = getDeltaStr(totalCoverage, baseTotal);
 
+  const noBase = baseReport === null;
+
   let body = `## 🤖 FancyBot: Code Coverage Report\n\n`;
-  body += `**Overall Coverage: ${totalCoverage.toFixed(1)}%${overallDelta}**\n\n`;
+
+  // Gate failure banner — shown at the top so it's immediately visible
+  if (gateFailures.length > 0) {
+    body += `> [!CAUTION]\n`;
+    body += `> **🚫 Coverage gates failed — this PR is blocked:**\n`;
+    for (const f of gateFailures) {
+      body += `> - ${f}\n`;
+    }
+    body += `\n`;
+  } else {
+    body += `> ✅ All coverage gates passed\n\n`;
+  }
+
+  body += `**Overall Coverage: ${totalCoverage.toFixed(1)}%** ${overallDelta !== '—' ? overallDelta : ''}\n\n`;
+  if (noBase) {
+    body += `> ℹ️ **Change** column shows \'—\' because no base coverage from \`main\` exists yet. It will populate after the first merge to main.\n\n`;
+  }
   
   // Build per-target breakdown
   body += `### Module Coverage\n`;
@@ -66,7 +85,8 @@ function formatCoverageReport(report, baseReport) {
   body += `</details>\n\n`;
 
   body += `> 🎯 Target threshold: **80%**\n`;
-  body += `> 📊 Generated from \`TestResults.xcresult\``;
+  body += `> 📊 Generated from \`TestResults.xcresult\`\n`;
+  body += `> 📦 Coverage includes all targets measured in the test run`;
 
   return body;
 }

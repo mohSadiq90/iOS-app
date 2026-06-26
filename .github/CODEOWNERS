@@ -1,0 +1,15 @@
+# CODEOWNERS
+# Automatically requests review from the listed GitHub user(s)
+# when a pull request modifies files under the matching paths.
+
+# Module: NetworkUtility
+/Modules/NetworkUtility/    @mohSadiq90
+
+# Module: CommonUI
+/Modules/CommonUI/          @mohSadiq90
+
+# Module: LocalStorage
+/Modules/LocalStorage/      @mohSadiq90
+
+# CI / GitHub Actions
+/.github/                   @mohSadiq90
