@@ -41,8 +41,8 @@ jobs:
             }
 
             // Group by severity
-            const errors = results.filter(v => v.severity === 'error');
-            const warnings = results.filter(v => v.severity === 'warning');
+            const errors = results.filter(v => (v.severity || '').toLowerCase() === 'error');
+            const warnings = results.filter(v => (v.severity || '').toLowerCase() === 'warning');
 
             let body = `## 🔍 SwiftLint Report\n\n`;
             body += `| Metric | Count |\n|--------|-------|\n`;
