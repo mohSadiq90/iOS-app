@@ -1,5 +1,5 @@
 /**
- * Finds an existing bot comment containing the given indicator.
+ * Finds an existing comment containing the given indicator.
  * @param {object} github 
  * @param {object} context 
  * @param {string} indicator 
@@ -11,7 +11,7 @@ async function findBotComment(github, context, indicator) {
     repo: context.repo.repo,
     issue_number: context.issue.number
   });
-  return comments.find(c => c.body.includes(indicator) && c.user.type === 'Bot') || null;
+  return comments.find(c => c.body.includes(indicator)) || null;
 }
 
 /**
@@ -44,7 +44,7 @@ async function createComment(github, context, body) {
 }
 
 /**
- * High-level helper to post a PR comment, replacing any previous comment containing the indicator.
+ * High-level helper to post a PR comment, replacing all previous comments containing the indicator.
  * @param {object} params
  * @param {object} params.github
  * @param {object} params.context
@@ -57,12 +57,18 @@ async function postOrReplaceComment({ github, context, indicator, body }) {
     return;
   }
 
-  const existing = await findBotComment(github, context, indicator);
-  if (existing) {
+  const { data: comments } = await github.rest.issues.listComments({
+    owner: context.repo.owner,
+    repo: context.repo.repo,
+    issue_number: context.issue.number
+  });
+
+  const matchingComments = comments.filter(c => c.body.includes(indicator));
+  for (const comment of matchingComments) {
     try {
-      await deleteComment(github, context, existing.id);
+      await deleteComment(github, context, comment.id);
     } catch (error) {
-      console.warn(`Failed to delete existing comment ${existing.id}:`, error);
+      console.warn(`Failed to delete existing comment ${comment.id}:`, error);
     }
   }
 
