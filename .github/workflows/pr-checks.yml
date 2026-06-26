@@ -71,48 +71,8 @@ jobs:
               body
             });
 
-      - name: Post inline review comments
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const results = JSON.parse(fs.readFileSync('swiftlint_results.json', 'utf8'));
-            
-            // Get PR diff to know which lines are reviewable
-            const { data: files } = await github.rest.pulls.listFiles({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number
-            });
-            
-            const changedFiles = new Set(files.map(f => f.filename));
-            const comments = [];
-
-            const errors = results.filter(v => v.severity === 'error');
-
-            for (const v of results) {
-              const file = v.file.replace(process.env.GITHUB_WORKSPACE + '/', '');
-              if (!changedFiles.has(file)) continue; // only comment on changed files
-
-              comments.push({
-                path: file,
-                line: v.line,
-                side: 'RIGHT',
-                body: `**SwiftLint ${v.severity === 'error' ? '🔴 Error' : '🟡 Warning'}**\n` +
-                      `**Rule:** \`${v.rule_id}\`\n` +
-                      `**Reason:** ${v.reason}`
-              });
-            }
-
-            if (comments.length > 0) {
-              await github.rest.pulls.createReview({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: context.issue.number,
-                event: errors.length > 0 ? 'REQUEST_CHANGES' : 'COMMENT',
-                comments
-              });
-            }
+      - name: Post inline review comments (Native)
+        run: swiftlint lint --quiet --reporter github-actions-logging || true
 
   code-coverage:
     name: Code Coverage
