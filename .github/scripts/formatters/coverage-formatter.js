@@ -2,9 +2,10 @@
  * Formats Code Coverage report comparing it to the base coverage report if available.
  * @param {object} report - Current coverage JSON report from xccov
  * @param {object|null} baseReport - Base coverage JSON report from main branch (or null)
+ * @param {string[]} gateFailures - List of gate failure messages to display at the top
  * @returns {string} The formatted Markdown comment body
  */
-function formatCoverageReport(report, baseReport) {
+function formatCoverageReport(report, baseReport, gateFailures = []) {
   if (!report) {
     return '## 🤖 FancyBot: Code Coverage Report\n\n⚠️ Error: No coverage report was parsed.';
   }
@@ -22,7 +23,21 @@ function formatCoverageReport(report, baseReport) {
   const overallDelta = getDeltaStr(totalCoverage, baseTotal);
 
   const noBase = baseReport === null;
+
   let body = `## 🤖 FancyBot: Code Coverage Report\n\n`;
+
+  // Gate failure banner — shown at the top so it's immediately visible
+  if (gateFailures.length > 0) {
+    body += `> [!CAUTION]\n`;
+    body += `> **🚫 Coverage gates failed — this PR is blocked:**\n`;
+    for (const f of gateFailures) {
+      body += `> - ${f}\n`;
+    }
+    body += `\n`;
+  } else {
+    body += `> ✅ All coverage gates passed\n\n`;
+  }
+
   body += `**Overall Coverage: ${totalCoverage.toFixed(1)}%** ${overallDelta !== '—' ? overallDelta : ''}\n\n`;
   if (noBase) {
     body += `> ℹ️ **Change** column shows \'—\' because no base coverage from \`main\` exists yet. It will populate after the first merge to main.\n\n`;
