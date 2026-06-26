@@ -55,17 +55,29 @@ jobs:
           cd Modules/${{ matrix.module }}
           xcodegen generate
 
+      - name: Detect available iPhone simulator
+        id: simulator
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          phones = [(rt, dev['udid']) for rt, devs in data['devices'].items() for dev in devs if 'iPhone' in dev['name'] and dev.get('isAvailable', False)]
+          phones.sort(key=lambda x: x[0], reverse=True)
+          print(phones[0][1] if phones else '')
+          ")
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+
       - name: Run ${{ matrix.module }} tests
         run: |
           xcodebuild test \
             -project Modules/${{ matrix.module }}/${{ matrix.module }}.xcodeproj \
             -scheme "${{ matrix.scheme }}" \
-            -destination "platform=iOS Simulator,name=iPhone 16" \
+            -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}" \
             -enableCodeCoverage YES \
             | xcpretty || xcodebuild test \
             -project Modules/${{ matrix.module }}/${{ matrix.module }}.xcodeproj \
             -scheme "${{ matrix.scheme }}" \
-            -destination "platform=iOS Simulator,name=iPhone 16" \
+            -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}" \
             -enableCodeCoverage YES
 
   code-coverage:

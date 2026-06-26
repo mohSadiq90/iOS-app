@@ -4,14 +4,53 @@ description: 'Installs dependencies, generates Xcode project, and runs tests wit
 runs:
   using: 'composite'
   steps:
-    - name: Build & Generate Coverage
+    - name: Install XcodeGen
+      shell: bash
+      run: brew install xcodegen
+
+    - name: Detect available iPhone simulator
+      id: simulator
       shell: bash
       run: |
-        brew install xcodegen
+        UDID=$(xcrun simctl list devices available -j | python3 -c "
+        import json, sys
+        data = json.load(sys.stdin)
+        phones = [
+          (runtime, dev['udid'], dev['name'])
+          for runtime, devs in data['devices'].items()
+          for dev in devs
+          if 'iPhone' in dev['name'] and dev.get('isAvailable', False)
+        ]
+        phones.sort(key=lambda x: x[0], reverse=True)
+        print(phones[0][1] if phones else '')
+        ")
+        echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+        echo "Using simulator UDID: $UDID"
+
+    - name: Build & Test main app
+      shell: bash
+      run: |
         xcodegen generate
         xcodebuild test \
           -project iOSApp.xcodeproj \
           -scheme "iOSApp" \
-          -destination "platform=iOS Simulator,name=iPhone 16" \
+          -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}" \
           -enableCodeCoverage YES \
           -resultBundlePath TestResults.xcresult
+
+    - name: Build & Test modules
+      shell: bash
+      run: |
+        for MODULE in NetworkUtility CommonUI LocalStorage; do
+          echo "--- Testing $MODULE ---"
+          cd "Modules/$MODULE"
+          xcodegen generate
+          xcodebuild test \
+            -project "${MODULE}.xcodeproj" \
+            -scheme "${MODULE}" \
+            -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}" \
+            -enableCodeCoverage YES \
+            -resultBundlePath "../../${MODULE}.xcresult" || true
+          cd ../..
+        done
+
