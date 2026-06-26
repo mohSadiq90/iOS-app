@@ -13,15 +13,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Build & Generate Coverage
-        run: |
-          brew install xcodegen
-          xcodegen generate
-          xcodebuild test \
-            -project iOSApp.xcodeproj \
-            -scheme "iOSApp" \
-            -destination "platform=iOS Simulator,name=iPhone 17" \
-            -enableCodeCoverage YES \
-            -resultBundlePath TestResults.xcresult
+        uses: ./.github/actions/build-and-test
 
       - name: Extract Coverage JSON
         run: |

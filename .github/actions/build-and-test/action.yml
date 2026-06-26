@@ -1,0 +1,17 @@
+name: 'Build and Test'
+description: 'Installs dependencies, generates Xcode project, and runs tests with code coverage'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Build & Generate Coverage
+      shell: bash
+      run: |
+        brew install xcodegen
+        xcodegen generate
+        xcodebuild test \
+          -project iOSApp.xcodeproj \
+          -scheme "iOSApp" \
+          -destination "platform=iOS Simulator,name=iPhone 17" \
+          -enableCodeCoverage YES \
+          -resultBundlePath TestResults.xcresult
