@@ -21,7 +21,7 @@ jobs:
       - name: Run SwiftLint and capture output
         id: swiftlint
         run: |
-          swiftlint lint --reporter json > swiftlint_results.json 2>&1 || true
+          swiftlint lint --quiet --reporter json > swiftlint_results.json || true
 
       - name: Post SwiftLint violations as PR comment
         uses: actions/github-script@v7
