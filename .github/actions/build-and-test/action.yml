@@ -12,6 +12,6 @@ runs:
         xcodebuild test \
           -project iOSApp.xcodeproj \
           -scheme "iOSApp" \
-          -destination "platform=iOS Simulator,name=iPhone 17" \
+          -destination "platform=iOS Simulator,name=iPhone 16" \
           -enableCodeCoverage YES \
           -resultBundlePath TestResults.xcresult
