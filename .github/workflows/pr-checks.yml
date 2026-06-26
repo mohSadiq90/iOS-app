@@ -23,7 +23,7 @@ jobs:
           swiftlint lint --quiet --reporter json > swiftlint_results.json || true
 
       - name: Post SwiftLint violations as PR comment
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const postSwiftLint = require('./.github/scripts/post-swiftlint-comment.js');
@@ -86,7 +86,7 @@ jobs:
           gh run download -n base-coverage -D . || true
 
       - name: Post Coverage Comment
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const postCoverage = require('./.github/scripts/post-coverage-comment.js');
