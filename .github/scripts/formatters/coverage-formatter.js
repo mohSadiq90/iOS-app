@@ -13,16 +13,20 @@ function formatCoverageReport(report, baseReport) {
   const baseTotal = baseReport ? (baseReport.lineCoverage * 100) : null;
   
   const getDeltaStr = (current, base) => {
-    if (base === null || base === undefined) return '';
+    if (base === null || base === undefined) return '—';
     const diff = current - base;
-    if (diff === 0) return ' (0.0%)';
-    return diff > 0 ? ` (+${diff.toFixed(1)}%) 📈` : ` (${diff.toFixed(1)}%) 📉`;
+    if (Math.abs(diff) < 0.05) return '`0.0%`';
+    return diff > 0 ? `\`+${diff.toFixed(1)}%\` 📈` : `\`${diff.toFixed(1)}%\` 📉`;
   };
 
   const overallDelta = getDeltaStr(totalCoverage, baseTotal);
 
+  const noBase = baseReport === null;
   let body = `## 🤖 FancyBot: Code Coverage Report\n\n`;
-  body += `**Overall Coverage: ${totalCoverage.toFixed(1)}%${overallDelta}**\n\n`;
+  body += `**Overall Coverage: ${totalCoverage.toFixed(1)}%** ${overallDelta !== '—' ? overallDelta : ''}\n\n`;
+  if (noBase) {
+    body += `> ℹ️ **Change** column shows \'—\' because no base coverage from \`main\` exists yet. It will populate after the first merge to main.\n\n`;
+  }
   
   // Build per-target breakdown
   body += `### Module Coverage\n`;
@@ -66,7 +70,8 @@ function formatCoverageReport(report, baseReport) {
   body += `</details>\n\n`;
 
   body += `> 🎯 Target threshold: **80%**\n`;
-  body += `> 📊 Generated from \`TestResults.xcresult\``;
+  body += `> 📊 Generated from \`TestResults.xcresult\`\n`;
+  body += `> 📦 Coverage includes all targets measured in the test run`;
 
   return body;
 }
