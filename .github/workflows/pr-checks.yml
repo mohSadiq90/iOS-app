@@ -1,0 +1,202 @@
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  swiftlint:
+    name: SwiftLint
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SwiftLint
+        run: brew install swiftlint
+
+      - name: Run SwiftLint and capture output
+        id: swiftlint
+        run: |
+          swiftlint lint --reporter json > swiftlint_results.json 2>&1 || true
+
+      - name: Post SwiftLint violations as PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const results = JSON.parse(fs.readFileSync('swiftlint_results.json', 'utf8'));
+
+            if (results.length === 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: '✅ **SwiftLint**: No violations found!'
+              });
+              return;
+            }
+
+            // Group by severity
+            const errors = results.filter(v => v.severity === 'error');
+            const warnings = results.filter(v => v.severity === 'warning');
+
+            let body = `## 🔍 SwiftLint Report\n\n`;
+            body += `| Metric | Count |\n|--------|-------|\n`;
+            body += `| 🔴 Errors | ${errors.length} |\n`;
+            body += `| 🟡 Warnings | ${warnings.length} |\n\n`;
+
+            const formatViolations = (violations, label) => {
+              if (violations.length === 0) return '';
+              let section = `### ${label}\n\n`;
+              section += `| File | Line | Rule | Reason |\n|------|------|------|--------|\n`;
+              for (const v of violations.slice(0, 50)) { // cap at 50
+                const file = v.file.replace(process.env.GITHUB_WORKSPACE + '/', '');
+                section += `| \`${file}\` | ${v.line} | \`${v.rule_id}\` | ${v.reason} |\n`;
+              }
+              if (violations.length > 50) section += `\n> ⚠️ Showing first 50 of ${violations.length} violations.\n`;
+              return section + '\n';
+            };
+
+            body += formatViolations(errors, '🔴 Errors');
+            body += formatViolations(warnings, '🟡 Warnings');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
+
+      - name: Post inline review comments
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const results = JSON.parse(fs.readFileSync('swiftlint_results.json', 'utf8'));
+            
+            // Get PR diff to know which lines are reviewable
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            
+            const changedFiles = new Set(files.map(f => f.filename));
+            const comments = [];
+
+            const errors = results.filter(v => v.severity === 'error');
+
+            for (const v of results) {
+              const file = v.file.replace(process.env.GITHUB_WORKSPACE + '/', '');
+              if (!changedFiles.has(file)) continue; // only comment on changed files
+
+              comments.push({
+                path: file,
+                line: v.line,
+                side: 'RIGHT',
+                body: `**SwiftLint ${v.severity === 'error' ? '🔴 Error' : '🟡 Warning'}**\n` +
+                      `**Rule:** \`${v.rule_id}\`\n` +
+                      `**Reason:** ${v.reason}`
+              });
+            }
+
+            if (comments.length > 0) {
+              await github.rest.pulls.createReview({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.issue.number,
+                event: errors.length > 0 ? 'REQUEST_CHANGES' : 'COMMENT',
+                comments
+              });
+            }
+
+  code-coverage:
+    name: Code Coverage
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build & Generate Coverage
+        run: |
+          # First, generate the project since it's not checked into Git
+          brew install xcodegen
+          xcodegen generate
+          xcodebuild test \
+            -project iOSApp.xcodeproj \
+            -scheme "iOSApp" \
+            -destination "platform=iOS Simulator,name=iPhone 15" \
+            -enableCodeCoverage YES \
+            -resultBundlePath TestResults.xcresult \
+            | xcpretty || true
+
+      - name: Post Coverage Comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { execSync } = require('child_process');
+
+            // Parse xccov report
+            let raw = '{}';
+            try {
+              raw = execSync(
+                'xcrun xccov view --report --json TestResults.xcresult'
+              ).toString();
+            } catch (e) {
+              console.log('Failed to parse xccov report');
+              return;
+            }
+            const report = JSON.parse(raw);
+
+            const totalCoverage = (report.lineCoverage * 100).toFixed(1);
+
+            // Build per-target breakdown
+            let rows = '';
+            for (const target of report.targets || []) {
+              if (target.name.includes('Tests')) continue;
+              const pct = (target.lineCoverage * 100).toFixed(1);
+              const icon = pct >= 80 ? '🟢' : pct >= 60 ? '🟡' : '🔴';
+              rows += `| ${icon} | \`${target.name}\` | ${pct}% |\n`;
+            }
+
+            const overallIcon = totalCoverage >= 80 ? '🟢' : totalCoverage >= 60 ? '🟡' : '🔴';
+
+            const body = `## ${overallIcon} Code Coverage Report
+
+            **Overall Coverage: ${totalCoverage}%**
+
+            | | Target | Coverage |
+            |--|--------|----------|
+            ${rows}
+
+            > 🎯 Target threshold: **80%**
+            > 📊 Generated from \`TestResults.xcresult\``;
+
+            // Find and update existing comment, or create new one
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+
+            const existing = comments.find(c => c.body.includes('Code Coverage Report'));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body
+              });
+            }
