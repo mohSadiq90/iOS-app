@@ -92,7 +92,7 @@ jobs:
             -scheme "iOSApp" \
             -destination "platform=iOS Simulator,name=iPhone 15" \
             -enableCodeCoverage YES \
-            -resultBundlePath TestResults.xcresult || true
+            -resultBundlePath TestResults.xcresult
 
       - name: Post Coverage Comment
         uses: actions/github-script@v7
